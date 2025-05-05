@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2024 John Livingston <https://www.john-livingston.fr/>
 // SPDX-FileCopyrightText: 2024 Mehdi Benadel <https://mehdibenadel.com>
+// SPDX-FileCopyrightText: 2025 Nicolas Chesnais <https://autre.space>
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -75,7 +76,11 @@ async function registerConfiguration (clientOptions: RegisterClientOptions): Pro
       if (!Array.isArray(myLibraryLinks.links)) { return links }
 
       const label = await peertubeHelpers.translate(LOC_MENU_CONFIGURATION_LABEL)
-      myLibraryLinks.links.unshift({
+      const chatroomLinkIndex =
+        (myLibraryLinks.links as any[]).findIndex((link: any) =>
+          link.path.includes('video-channels')
+        ) + 1
+      myLibraryLinks.links.splice(chatroomLinkIndex, 0, {
         label,
         shortLabel: label,
         path: '/p/livechat/configuration',
