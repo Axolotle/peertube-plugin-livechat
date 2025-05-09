@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2024 Mehdi Benadel <https://mehdibenadel.com>
+// SPDX-FileCopyrightText: 2025 Nicolas Chesnais <https://autre.space>
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { html } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { unsafeHTML } from 'lit/directives/unsafe-html.js'
-import { helpButtonSVG } from '../../videowatch/buttons'
+import { helpButtonSVG, openBlankChatSVG } from '../../videowatch/buttons'
 import { Task } from '@lit/task'
 import { localizedHelpUrl } from '../../../utils/help'
 import { ptTr } from '../directives/translation'
@@ -23,6 +24,13 @@ export class HelpButtonElement extends LivechatElement {
   @state()
   public url: URL = new URL('https://lmddgtfy.net/')
 
+  @state()
+  private _interacting = false
+
+  private _set_interacting (interacting: boolean): void {
+    this._interacting = interacting
+  }
+
   private readonly _asyncTaskRender = new Task(this, {
     task: async () => {
       this.url = new URL(
@@ -39,7 +47,11 @@ export class HelpButtonElement extends LivechatElement {
         target=_blank
         title="${this.buttonTitle}"
         class="primary-button orange-button peertube-button-link"
-      >${unsafeHTML(helpButtonSVG())}</a>`
+        @pointerenter="${() => this._set_interacting(true)}"
+        @pointerleave="${() => this._set_interacting(false)}"
+        @focus="${() => this._set_interacting(true)}"
+        @blur="${() => this._set_interacting(false)}"
+      >${unsafeHTML(this._interacting ? openBlankChatSVG() : helpButtonSVG())}</a>`
     })
   }
 }

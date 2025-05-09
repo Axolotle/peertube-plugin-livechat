@@ -285,7 +285,7 @@ prosody_components_list_description: |
     </li>
     <li>N'utilisez que des caractères alphanumériques dans la passphrase secrète (utilisez au moins 15 caractères).</li>
   </ul>
-online_help: Aide en ligne
+online_help: Ouvrir la documentation dans une nouvelle fenêtre
 prosody_components_interfaces_label: Interfaces réseau pour les composants Prosody
   externes
 prosody_components_interfaces_description: "Les interfaces réseau sur lesquelles écouter

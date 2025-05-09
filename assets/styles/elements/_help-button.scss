@@ -1,19 +1,23 @@
 /*
  * SPDX-FileCopyrightText: 2024 John Livingston <https://www.john-livingston.fr/>
+ * SPDX-FileCopyrightText: 2025 Nicolas Chesnais <https://autre.space>
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 livechat-help-button {
+  display: inline-block;
+  margin: 0 2px;
+
   a {
-    height: 18px !important;
-    margin: 2px !important;
-    padding: 1px !important;
+    padding: 2px !important;
     vertical-align: middle;
+    border-radius: 50% !important;
   }
 
   svg {
     display: block;
-    height: auto;
+    height: 16px;
+    width: 16px;
   }
 }
