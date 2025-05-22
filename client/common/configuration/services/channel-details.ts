@@ -254,6 +254,29 @@ export class ChannelDetailsService {
     return this.backToFront(await response.json())
   }
 
+  public async fetchInstanceConfiguration (): Promise<ChannelConfiguration> {
+    const response = await fetch(
+      getBaseRoute(this._registerClientOptions) + '/api/configuration/channel/' + encodeURIComponent(1),
+      {
+        method: 'GET',
+        headers: this._headers
+      }
+    )
+    // const response = await fetch(
+    //   getBaseRoute(this._registerClientOptions) + '/api/configuration/channel-instance',
+    //   {
+    //     method: 'GET',
+    //     headers: this._headers
+    //   }
+    // )
+
+    if (!response.ok) {
+      throw new Error('Can\'t get channel instance configuration options.')
+    }
+
+    return response.json()
+  }
+
   public async fetchEmojisConfiguration (channelId: number): Promise<ChannelEmojisConfiguration> {
     const url = getBaseRoute(this._registerClientOptions) +
       '/api/configuration/channel/emojis/' +

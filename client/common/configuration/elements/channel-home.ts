@@ -33,6 +33,7 @@ export class ChannelHomeElement extends LivechatElement {
 
       this._channelDetailsService = new ChannelDetailsService(this.ptOptions)
       this._channels = await this._channelDetailsService.fetchUserChannels(username)
+      // FIXME if admin unshift the 'instance' channel config page
     },
     args: () => []
   })
@@ -50,6 +51,12 @@ export class ChannelHomeElement extends LivechatElement {
         </h1>
         <p>${ptTr(LOC_LIVECHAT_CONFIGURATION_DESC)}</p>
         <p>${ptTr(LOC_LIVECHAT_CONFIGURATION_PLEASE_SELECT)}</p>
+
+        <a href="/p/livechat/configuration/channel-instance">
+          <div class="avatar channel initial gray"></div>
+          <div>Instance channel settings</div>
+        </a>
+
         <ul class="peertube-plugin-livechat-configuration-home-channels">
         ${this._channels?.map((channel) => html`
           <li>
