@@ -13,6 +13,9 @@ import { ValidationErrorType } from '../../models/validation'
 import { LivechatElement } from '../livechat'
 
 export type FormTypes = number | string | boolean | Date | Array<number | string>
+export type FormRecord = Record<string, FormTypes>
+export type FormArray = FormRecord[]
+export type AnyForm = FormRecord | FormArray
 
 export type FieldKind =
   | 'text'
@@ -69,8 +72,16 @@ export class FormBaseElement extends LivechatElement {
   @property({ type: String, attribute: false })
   public path = ''
 
+  @property({ attribute: false })
+  public form!: AnyForm
+
   @property({ type: Object, attribute: false })
   public validations: Record<string, ValidationErrorType[]> = {}
+
+  protected _dispatchUpdateFormEvent = (): void => {
+    this.requestUpdate('form')
+    this.dispatchEvent(new CustomEvent('update-form', { detail: this.form, composed: true }))
+  }
 
   protected _updateForm = (schema: FieldSchema, value: any): void => {}
 

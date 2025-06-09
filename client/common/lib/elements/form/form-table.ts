@@ -14,7 +14,7 @@ import { repeat } from 'lit/directives/repeat.js'
 import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import { AddSVG, RemoveSVG } from '../../buttons'
 import { ptTr } from '../../directives/translation'
-import { FieldSchema, FormBaseElement, FormTypes, PartialFieldSchema } from './form-base'
+import { FieldSchema, FormArray, FormBaseElement, FormTypes, PartialFieldSchema } from './form-base'
 
 interface DynamicTableRowData {
   _id: number
@@ -45,8 +45,8 @@ export class DynamicTableFormElement extends FormBaseElement {
   @property({ attribute: false })
   public validationPrefix = ''
 
-  @property({ attribute: false })
-  public rows: Array<Record<string, FormTypes>> = []
+  @property({ type: Array, attribute: false })
+  public override form: FormArray = []
 
   @state()
   public _rowsById: DynamicTableRowData[] = []
@@ -72,11 +72,11 @@ export class DynamicTableFormElement extends FormBaseElement {
   protected _addRow = async (): Promise<void> => {
     const newRow = this._getDefaultRow()
     // Create row and assign id and original index
-    this._rowsById.push({ _id: this._lastRowId++, _originalIndex: this.rows.length, row: newRow })
-    this.rows.push(newRow)
-    this.requestUpdate('rows')
+    this._rowsById.push({ _id: this._lastRowId++, _originalIndex: this.form.length, row: newRow })
+    this.form.push(newRow)
+    this.requestUpdate('form')
     this.requestUpdate('_rowsById')
-    this.dispatchEvent(new CustomEvent('update', { detail: this.rows }))
+    this.dispatchEvent(new CustomEvent('update', { detail: this.form }))
 
     // Once the update is completed, we give focus to the first input field of the new row.
     await this.updateComplete
@@ -111,10 +111,9 @@ export class DynamicTableFormElement extends FormBaseElement {
     })
     const rowToRemove = this._rowsById.filter((rowById) => rowById._id === rowId).map((rowById) => rowById.row)[0]
     this._rowsById = this._rowsById.filter((rowById) => rowById._id !== rowId)
-    this.rows = this.rows.filter((row) => row !== rowToRemove)
-    this.requestUpdate('rows')
+    this.form = this.form.filter((row) => row !== rowToRemove)
     this.requestUpdate('_rowsById')
-    this.dispatchEvent(new CustomEvent('update', { detail: this.rows }))
+    this._dispatchUpdateFormEvent()
   }
 
   protected override render = (): unknown => {
@@ -124,16 +123,16 @@ export class DynamicTableFormElement extends FormBaseElement {
 
     // Filter removed rows
     // FIXME: is this really necessary?
-    this._rowsById = this._rowsById.filter((rowById) => this.rows.includes(rowById.row))
+    this._rowsById = this._rowsById.filter((rowById) => this.form.includes(rowById.row))
 
-    for (let i = 0; i < this.rows.length; i++) {
-      if (!this._rowsById.find((rowById) => rowById.row === this.rows[i])) {
+    for (let i = 0; i < this.form.length; i++) {
+      if (!this._rowsById.find((rowById) => rowById.row === this.form[i])) {
         // Add row and assign id
-        this._rowsById.push({ _id: this._lastRowId++, _originalIndex: i, row: this.rows[i] })
+        this._rowsById.push({ _id: this._lastRowId++, _originalIndex: i, row: this.form[i] })
       } else {
         // Update index in case it changed
         this._rowsById
-          .filter((rowById) => rowById.row === this.rows[i])
+          .filter((rowById) => rowById.row === this.form[i])
           .forEach((value) => {
             value._originalIndex = i
           })
@@ -287,10 +286,9 @@ export class DynamicTableFormElement extends FormBaseElement {
         break
     }
 
-    this.rows = this._rowsById.map((rowById) => rowById.row)
+    this.form = this._rowsById.map((rowById) => rowById.row)
 
-    this.requestUpdate('rows')
     this.requestUpdate('_rowsById')
-    this.dispatchEvent(new CustomEvent('update', { detail: this.rows }))
+    this._dispatchUpdateFormEvent()
   }
 }
