@@ -5,7 +5,7 @@
 // FIXME: @stylistic/indent is buggy with strings literrals.
 /* eslint-disable @stylistic/indent */
 
-import { LivechatElement } from './livechat'
+import { LivechatElement } from '../livechat'
 import { html } from 'lit'
 import type { DirectiveResult } from 'lit/directive'
 import { customElement, property } from 'lit/decorators.js'
