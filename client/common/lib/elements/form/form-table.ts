@@ -14,8 +14,7 @@ import { repeat } from 'lit/directives/repeat.js'
 import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import { AddSVG, RemoveSVG } from '../../buttons'
 import { ptTr } from '../../directives/translation'
-import { FieldSchema, FormBaseElement, FormTypes } from './form-base'
-import type { TagsInputElement } from './tags-input'
+import { FieldSchema, FormBaseElement, FormTypes, PartialFieldSchema } from './form-base'
 
 interface DynamicTableRowData {
   _id: number
@@ -30,7 +29,7 @@ interface DynamicFormHeaderCellData {
 }
 
 export type DynamicFormHeader = Record<string, DynamicFormHeaderCellData>
-export type DynamicFormSchema = Record<string, FieldSchema>
+export type DynamicFormSchema = Record<string, PartialFieldSchema>
 
 @customElement('livechat-dynamic-table-form')
 export class DynamicTableFormElement extends FormBaseElement {
@@ -59,18 +58,18 @@ export class DynamicTableFormElement extends FormBaseElement {
   private columnOrder: string[] = []
 
   // fixes situations when list has been reinitialized or changed outside of CustomElement
-  private readonly _updateLastRowId = (): void => {
+  protected _updateLastRowId = (): void => {
     for (const rowById of this._rowsById) {
       this._lastRowId = Math.max(this._lastRowId, rowById._id + 1)
     }
   }
 
-  private readonly _getDefaultRow = (): Record<string, FormTypes> => {
+  protected _getDefaultRow = (): Record<string, FormTypes> => {
     this._updateLastRowId()
     return Object.fromEntries([...Object.entries(this.schema).map((entry) => [entry[0], entry[1].default ?? ''])])
   }
 
-  private readonly _addRow = async (): Promise<void> => {
+  protected _addRow = async (): Promise<void> => {
     const newRow = this._getDefaultRow()
     // Create row and assign id and original index
     this._rowsById.push({ _id: this._lastRowId++, _originalIndex: this.rows.length, row: newRow })
@@ -93,7 +92,7 @@ export class DynamicTableFormElement extends FormBaseElement {
     }
   }
 
-  private readonly _removeRow = async (rowId: number): Promise<void> => {
+  protected _removeRow = async (rowId: number): Promise<void> => {
     const confirmMsg = await this.ptTranslate(LOC_ACTION_REMOVE_ENTRY_CONFIRM)
     await new Promise<void>((resolve, reject) => {
       this.ptOptions.peertubeHelpers.showModal({
@@ -159,7 +158,7 @@ export class DynamicTableFormElement extends FormBaseElement {
     `
   }
 
-  private readonly _renderHeader = (): TemplateResult => {
+  protected _renderHeader = (): TemplateResult => {
     const columns = Object.entries(this.header).sort(
       ([k1, _1], [k2, _2]) => this.columnOrder.indexOf(k1) - this.columnOrder.indexOf(k2)
     )
@@ -175,13 +174,13 @@ export class DynamicTableFormElement extends FormBaseElement {
     </thead>`
   }
 
-  private readonly _renderHeaderCell = (headerCellData: DynamicFormHeaderCellData): TemplateResult => {
+  protected _renderHeaderCell = (headerCellData: DynamicFormHeaderCellData): TemplateResult => {
     return html`<th scope="col" class=${headerCellData.headerClassList?.join(' ') ?? ''}>
       <div data-toggle="tooltip" data-placement="bottom" data-html="true">${headerCellData.colName}</div>
     </th>`
   }
 
-  private readonly _renderHeaderDescriptionCell = (headerCellData: DynamicFormHeaderCellData): TemplateResult => {
+  protected _renderHeaderDescriptionCell = (headerCellData: DynamicFormHeaderCellData): TemplateResult => {
     const classList = ['livechat-dynamic-table-form-description-header']
     if (headerCellData.headerClassList) {
       classList.push(...headerCellData.headerClassList)
@@ -189,14 +188,14 @@ export class DynamicTableFormElement extends FormBaseElement {
     return html`<th scope="col" class=${classList.join(' ')}>${headerCellData.description ?? ''}</th>`
   }
 
-  private readonly _renderDataRow = (rowData: DynamicTableRowData): TemplateResult => {
+  protected _renderDataRow = (rowData: DynamicTableRowData): TemplateResult => {
     const inputId = `peertube-livechat-${this.path.replace(/_/g, '-')}-row-${rowData._id}`
 
     return html`<tr id=${inputId}>
       ${Object.keys(this.header)
         .sort((k1, k2) => this.columnOrder.indexOf(k1) - this.columnOrder.indexOf(k2))
         .map((key) =>
-          this.renderDataCell(key, rowData.row[key] ?? this.schema[key].default, rowData._id, rowData._originalIndex)
+          this._renderDataCell(key, rowData.row[key] ?? this.schema[key].default, rowData._id, rowData._originalIndex)
         )}
       <td class="form-group">
         <button
@@ -211,7 +210,7 @@ export class DynamicTableFormElement extends FormBaseElement {
     </tr>`
   }
 
-  private readonly _renderFooter = (): TemplateResult => {
+  protected _renderFooter = (): TemplateResult => {
     if (this.maxLines && this._rowsById.length >= this.maxLines) {
       return html``
     }
@@ -233,29 +232,33 @@ export class DynamicTableFormElement extends FormBaseElement {
     </tfoot>`
   }
 
-  renderDataCell = (
+  protected _renderDataCell = (
     propertyName: string,
     propertyValue: FormTypes,
     rowId: number,
     originalIndex: number
   ): TemplateResult => {
-    const propertySchema = this.schema[propertyName] ?? {}
-    const inputTitle = propertySchema.inputTitle ?? this.header[propertyName]?.colName
-    return this._renderField(propertyName, propertySchema, propertyValue, rowId, originalIndex, inputTitle)
+    const baseSchema = this.schema[propertyName] ?? {}
+    const baseId = this.path.toLowerCase().replace(/[_.]/g, '-')
+    const localId = propertyName.toLowerCase().replace(/[_.]/g, '-')
+    const path = `[${rowId}].${propertyName}`
+    const schema = {
+      ...baseSchema,
+      path,
+      id: `peertube-livechat-${baseId}-row-${originalIndex}-${localId}-${rowId}`,
+      title: baseSchema.title ?? this.header[propertyName]?.colName,
+      valid: !!this.validations?.[path]?.length
+    }
+    const classList = ['form-group']
+    if (schema.colClassList?.length) classList.push(...schema.colClassList)
+
+    return html`
+      <td class=${classList.join(' ')}>${this._renderField(schema, propertyValue)} ${this._renderFeedback(schema)}</td>
+    `
   }
 
-  protected override _updateForm = (
-    event: Event,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    rowId: number
-  ): void => {
-    const target = event.target as TagsInputElement | HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    const value = target
-      ? target instanceof HTMLInputElement && target.type === 'checkbox'
-        ? !!target.checked
-        : target.value
-      : undefined
+  protected override _updateForm = (schema: FieldSchema, value: any): void => {
+    const rowId = parseInt(schema.path.split('.')[0].replace(/\[(\d+)\]/, '$1'))
 
     if (value === undefined) {
       this.logger.warn('Could not update property : Target or value was undefined')
@@ -264,23 +267,23 @@ export class DynamicTableFormElement extends FormBaseElement {
 
     const rowById = this._rowsById.find((rowById) => rowById._id === rowId)
     if (!rowById) {
-      this.logger.warn(`Could not update property : Did not find a property named '${propertyName}' in row '${rowId}'`)
+      this.logger.warn(`Could not update property : Did not find a property named '${schema.path}' in row '${rowId}'`)
       return
     }
 
-    switch (propertySchema.default?.constructor) {
+    switch (schema.default?.constructor) {
       case Array:
-        if (value.constructor === Array || !propertySchema.separator) {
-          rowById.row[propertyName] = value
+        if (value.constructor === Array || !schema.separator) {
+          rowById.row[schema.path] = value
         } else {
-          rowById.row[propertyName] = (value as string).split(propertySchema.separator)
+          rowById.row[schema.path] = (value as string).split(schema.separator)
         }
         break
       case Number:
-        rowById.row[propertyName] = Number(value)
+        rowById.row[schema.path] = Number(value)
         break
       default:
-        rowById.row[propertyName] = value
+        rowById.row[schema.path] = value
         break
     }
 

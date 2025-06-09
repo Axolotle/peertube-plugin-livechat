@@ -37,9 +37,11 @@ export type FieldKind =
   | 'tags'
   | 'image-file'
 
-export interface FieldSchema {
-  inputType?: FieldKind
-  inputTitle?: string
+export interface PartialFieldSchema {
+  kind: FieldKind
+  path: string
+  title?: string | DirectiveResult
+  default?: FormTypes
   min?: number
   max?: number
   minlength?: number
@@ -48,39 +50,37 @@ export interface FieldSchema {
   options?: Record<string, string>
   datalist?: FormTypes[]
   separator?: string
-  default?: FormTypes
   colClassList?: string[] // CSS classes to add to the <td> element.
+}
+
+export interface FieldSchema extends PartialFieldSchema {
+  id: string
+  valid?: boolean
+}
+
+function getClassesRecord (valid?: boolean, classes?: string[]): Record<string, boolean> {
+  const classRecord = classes ? Object.fromEntries(classes.map((cls) => [cls, true])) : {}
+  classRecord['is-invalid'] = valid === false
+  classRecord['is-valid'] = valid === true
+  return classRecord
 }
 
 export class FormBaseElement extends LivechatElement {
   @property({ type: String, attribute: false })
   public path = ''
 
-  @property()
+  @property({ type: Object, attribute: false })
   public validations: Record<string, ValidationErrorType[]> = {}
 
-  protected _updateForm = (event: Event, propertyName: string, propertySchema: FieldSchema, rowId: number): void => {}
+  protected _updateForm = (schema: FieldSchema, value: any): void => {}
 
-  protected _renderField = (
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: FormTypes,
-    rowId: number,
-    originalIndex: number,
-    inputTitle?: DirectiveResult
-  ): TemplateResult => {
+  protected _renderField = (schema: FieldSchema, value: FormTypes): TemplateResult | typeof nothing => {
     let formElement
 
-    const inputName = `${this.path.replace(/-/g, '_')}_${propertyName.toString().replace(/-/g, '_')}_${rowId}`
-    const inputId = `peertube-livechat-${this.path.replace(/_/g, '-')}-${propertyName
-      .toString()
-      .replace(/_/g, '-')}-${rowId}`
-    const feedback = this._renderFeedback(inputId, propertyName, originalIndex)
-
-    switch (propertySchema.default?.constructor) {
+    switch (schema.default?.constructor) {
       case String:
-        propertySchema.inputType ??= 'text'
-        switch (propertySchema.inputType) {
+        schema.kind ??= 'text'
+        switch (schema.kind) {
           case 'text':
           case 'color':
           case 'date':
@@ -97,127 +97,57 @@ export class FormBaseElement extends LivechatElement {
           case 'time':
           case 'url':
           case 'week':
-            formElement = html`${this._renderInput(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue as string,
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderInput(schema, value as string)} `
             break
 
           case 'textarea':
-            formElement = html`${this._renderTextarea(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue as string,
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderTextarea(schema, value as string)} `
             break
 
           case 'select':
-            formElement = html`${this._renderSelect(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue as string,
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderSelect(schema, value as string)} `
             break
 
           case 'image-file':
-            formElement = html`${this._renderImageFileInput(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue?.toString(),
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderImageFileInput(schema, value?.toString())}`
             break
         }
         break
 
       case Date:
-        propertySchema.inputType ??= 'datetime'
-        switch (propertySchema.inputType) {
+        schema.kind ??= 'datetime'
+        switch (schema.kind) {
           case 'date':
           case 'datetime':
           case 'datetime-local':
           case 'time':
-            formElement = html`${this._renderInput(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              (propertyValue as Date).toISOString(),
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderInput(schema, (value as Date).toISOString())} `
             break
         }
         break
 
       case Number:
-        propertySchema.inputType ??= 'number'
-        switch (propertySchema.inputType) {
+        schema.kind ??= 'number'
+        switch (schema.kind) {
           case 'number':
           case 'range':
-            formElement = html`${this._renderInput(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue as string,
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderInput(schema, value as string)} `
             break
         }
         break
 
       case Boolean:
-        propertySchema.inputType ??= 'checkbox'
-        switch (propertySchema.inputType) {
+        schema.kind ??= 'checkbox'
+        switch (schema.kind) {
           case 'checkbox':
-            formElement = html`${this._renderCheckbox(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue as boolean,
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderCheckbox(schema, value as boolean)} `
             break
         }
         break
 
       case Array:
-        propertySchema.inputType ??= 'text'
-        switch (propertySchema.inputType) {
+        schema.kind ??= 'text'
+        switch (schema.kind) {
           case 'text':
           case 'color':
           case 'date':
@@ -234,266 +164,158 @@ export class FormBaseElement extends LivechatElement {
           case 'time':
           case 'url':
           case 'week':
-            if (propertyValue.constructor !== Array) {
-              propertyValue = propertyValue ? [propertyValue as number | string] : []
+            if (value.constructor !== Array) {
+              value = value ? [value as number | string] : []
             }
             formElement = html`${this._renderInput(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue?.join(propertySchema.separator ?? ',') ?? propertyValue ?? propertySchema.default ?? '',
-              originalIndex
-            )}
-            ${feedback} `
+              schema,
+              value?.join(schema.separator ?? ',') ?? value ?? schema.default ?? ''
+            )} `
             break
           case 'textarea':
-            if (propertyValue.constructor !== Array) {
-              propertyValue = propertyValue ? [propertyValue as number | string] : []
+            if (value.constructor !== Array) {
+              value = value ? [value as number | string] : []
             }
             formElement = html`${this._renderTextarea(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue?.join(propertySchema.separator ?? ',') ?? propertyValue ?? propertySchema.default ?? '',
-              originalIndex
-            )}
-            ${feedback} `
+              schema,
+              value?.join(schema.separator ?? ',') ?? value ?? schema.default ?? ''
+            )}`
             break
           case 'tags':
-            if (propertyValue.constructor !== Array) {
-              propertyValue = propertyValue ? [propertyValue as number | string] : []
+            if (value.constructor !== Array) {
+              value = value ? [value as number | string] : []
             }
-            formElement = html`${this._renderTagsInput(
-              rowId,
-              inputId,
-              inputName,
-              inputTitle,
-              propertyName,
-              propertySchema,
-              propertyValue,
-              originalIndex
-            )}
-            ${feedback} `
+            formElement = html`${this._renderTagsInput(schema, value)}`
             break
         }
     }
 
     if (!formElement) {
       this.logger.warn(
-        `value type '${propertyValue.constructor.toString()}' is incompatible` +
-        `with field type '${propertySchema.inputType as string}' for form entry '${propertyName.toString()}'.`
+        `value type '${value.constructor.toString()}' is incompatible` +
+        `with field type '${schema.kind as string}' for form entry '${schema.path}'.`
       )
     }
 
-    const classList = ['form-group']
-    if (propertySchema.colClassList) {
-      classList.push(...propertySchema.colClassList)
-    }
-    return html`<td class=${classList.join(' ')}>${formElement}</td>`
+    return formElement || nothing
   }
 
-  protected _renderInput = (
-    rowId: number,
-    inputId: string,
-    inputName: string,
-    inputTitle: string | DirectiveResult | undefined,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: string,
-    originalIndex: number
-  ): TemplateResult => {
+  protected _renderInput = (schema: FieldSchema, value: string): TemplateResult => {
     return html`
       <input
-        type=${propertySchema.inputType as any}
-        name=${inputName}
-        class=${classMap(
-          Object.assign({ 'form-control': true }, this._getInputValidationClass(propertyName, originalIndex))
-        )}
-        id=${inputId}
-        title=${ifDefined(inputTitle)}
-        aria-describedby="${inputId}-feedback"
-        list=${ifDefined(propertySchema.datalist ? inputId + '-datalist' : undefined)}
-        min=${ifDefined(propertySchema.min)}
-        max=${ifDefined(propertySchema.max)}
-        minlength=${ifDefined(propertySchema.minlength)}
-        maxlength=${ifDefined(propertySchema.maxlength)}
-        @change=${(event: Event) => this._updateForm(event, propertyName, propertySchema, rowId)}
-        .value=${propertyValue}
+        type=${schema.kind as any}
+        name=${schema.id}
+        id=${schema.id}
+        class=${classMap(getClassesRecord(schema.valid, ['form-control']))}
+        title=${ifDefined(schema.title)}
+        aria-describedby="${schema.id}-feedback"
+        list=${ifDefined(schema.datalist ? schema.id + '-datalist' : undefined)}
+        min=${ifDefined(schema.min)}
+        max=${ifDefined(schema.max)}
+        minlength=${ifDefined(schema.minlength)}
+        maxlength=${ifDefined(schema.maxlength)}
+        .value=${value}
+        @change=${(e: Event) => this._updateForm(schema, (e.target as HTMLInputElement).value)}
       />
-      ${propertySchema.datalist
-        ? html`<datalist id=${inputId + '-datalist'}>
-            ${(propertySchema.datalist ?? []).map((value) => html`<option value=${value.toString()}></option>`)}
+      ${schema.datalist
+        ? html`<datalist id=${schema.id + '-datalist'}>
+            ${(schema.datalist ?? []).map((value) => html`<option value=${value.toString()}></option>`)}
           </datalist>`
         : nothing}
     `
   }
 
-  protected _renderTextarea = (
-    rowId: number,
-    inputId: string,
-    inputName: string,
-    inputTitle: string | DirectiveResult | undefined,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: string,
-    originalIndex: number
-  ): TemplateResult => {
+  protected _renderTextarea = (schema: FieldSchema, value: string): TemplateResult => {
     return html`
       <textarea
-        name=${inputName}
-        class=${classMap(
-          Object.assign({ 'form-control': true }, this._getInputValidationClass(propertyName, originalIndex))
-        )}
-        id=${inputId}
-        title=${ifDefined(inputTitle)}
-        aria-describedby="${inputId}-feedback"
-        min=${ifDefined(propertySchema.min)}
-        max=${ifDefined(propertySchema.max)}
-        minlength=${ifDefined(propertySchema.minlength)}
-        maxlength=${ifDefined(propertySchema.maxlength)}
-        @change=${(event: Event) => this._updateForm(event, propertyName, propertySchema, rowId)}
-        .value=${propertyValue}
+        name=${schema.id}
+        id=${schema.id}
+        class=${classMap(getClassesRecord(schema.valid, ['form-control']))}
+        title=${ifDefined(schema.title)}
+        aria-describedby="${schema.id}-feedback"
+        min=${ifDefined(schema.min)}
+        max=${ifDefined(schema.max)}
+        minlength=${ifDefined(schema.minlength)}
+        maxlength=${ifDefined(schema.maxlength)}
+        .value=${value}
+        @change=${(e: Event) => this._updateForm(schema, (e.target as HTMLTextAreaElement).value)}
       ></textarea>
     `
   }
 
-  protected _renderSelect = (
-    rowId: number,
-    inputId: string,
-    inputName: string,
-    inputTitle: string | DirectiveResult | undefined,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: string,
-    originalIndex: number
-  ): TemplateResult => {
+  protected _renderSelect = (schema: FieldSchema, value: string): TemplateResult => {
     return html`
       <select
-        class=${classMap(
-          Object.assign({ 'form-select': true }, this._getInputValidationClass(propertyName, originalIndex))
-        )}
-        id=${inputId}
-        title=${ifDefined(inputTitle)}
-        aria-describedby="${inputId}-feedback"
-        aria-label=${inputName}
-        @change=${(event: Event) => this._updateForm(event, propertyName, propertySchema, rowId)}
+        name=${schema.id}
+        id=${schema.id}
+        class=${classMap(getClassesRecord(schema.valid, ['form-select']))}
+        title=${ifDefined(schema.title)}
+        aria-describedby="${schema.id}-feedback"
+        @change=${(e: Event) => this._updateForm(schema, (e.target as HTMLSelectElement).value)}
       >
-        <option ?selected=${!propertyValue}>${inputTitle ?? ''}</option>
-        ${Object.entries(propertySchema.options ?? {})?.map(
-          ([value, name]) => html`<option ?selected=${propertyValue === value} value=${value}>${name}</option>`
+        <option ?selected=${!value}>${schema.title ?? ''}</option>
+        ${Object.entries(schema.options ?? {})?.map(
+          ([v, name]) => html`<option ?selected=${value === v} value=${value}>${name}</option>`
         )}
       </select>
     `
   }
 
-  protected _renderCheckbox = (
-    rowId: number,
-    inputId: string,
-    inputName: string,
-    inputTitle: string | DirectiveResult | undefined,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: boolean,
-    originalIndex: number
-  ): TemplateResult => {
+  protected _renderCheckbox = (schema: FieldSchema, value: boolean): TemplateResult => {
     return html`
       <input
         type="checkbox"
-        name=${inputName}
-        class=${classMap(
-          Object.assign({ 'form-check-input': true }, this._getInputValidationClass(propertyName, originalIndex))
-        )}
-        id=${inputId}
-        title=${ifDefined(inputTitle)}
-        aria-describedby="${inputId}-feedback"
-        @change=${(event: Event) => this._updateForm(event, propertyName, propertySchema, rowId)}
+        name=${schema.id}
+        id=${schema.id}
+        class=${classMap(getClassesRecord(schema.valid, ['form-check-input']))}
+        title=${ifDefined(schema.title)}
+        aria-describedby="${schema.id}-feedback"
         value="1"
-        ?checked=${propertyValue}
+        ?checked=${value}
+        @change=${(e: Event) => this._updateForm(schema, (e.target as HTMLInputElement).checked)}
       />
     `
   }
 
-  protected _renderTagsInput = (
-    rowId: number,
-    inputId: string,
-    inputName: string,
-    inputTitle: string | DirectiveResult | undefined,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: Array<string | number>,
-    originalIndex: number
-  ): TemplateResult => {
+  protected _renderTagsInput = (schema: FieldSchema, value: Array<string | number>): TemplateResult => {
     return html`
       <livechat-tags-input
-        .name=${inputName}
-        class=${classMap(
-          Object.assign({ 'form-control': true }, this._getInputValidationClass(propertyName, originalIndex))
-        )}
-        id=${inputId}
-        .inputTitle=${inputTitle as any}
-        aria-describedby="${inputId}-feedback"
-        .min=${propertySchema.min}
-        .max=${propertySchema.max}
-        .minlength=${propertySchema.minlength}
-        .maxlength=${propertySchema.maxlength}
-        .datalist=${propertySchema.datalist as any}
-        .separator=${propertySchema.separator ?? '\n'}
-        @change=${(event: Event) => this._updateForm(event, propertyName, propertySchema, rowId)}
-        .value=${propertyValue as any}
+        .name=${schema.id}
+        id=${schema.id}
+        class=${classMap(getClassesRecord(schema.valid, ['form-control']))}
+        .inputTitle=${schema.title}
+        aria-describedby="${schema.id}-feedback"
+        .min=${schema.min}
+        .max=${schema.max}
+        .minlength=${schema.minlength}
+        .maxlength=${schema.maxlength}
+        .datalist=${schema.datalist as any}
+        .separator=${schema.separator ?? '\n'}
+        .value=${value as any}
+        @change=${(e: CustomEvent) => this._updateForm(schema, e.detail)}
       ></livechat-tags-input>
     `
   }
 
-  protected _renderImageFileInput = (
-    rowId: number,
-    inputId: string,
-    inputName: string,
-    inputTitle: string | DirectiveResult | undefined,
-    propertyName: string,
-    propertySchema: FieldSchema,
-    propertyValue: string,
-    originalIndex: number
-  ): TemplateResult => {
+  protected _renderImageFileInput = (schema: FieldSchema, value: string): TemplateResult => {
     return html`
       <livechat-image-file-input
-        .name=${inputName}
-        class=${classMap(this._getInputValidationClass(propertyName, originalIndex))}
-        id=${inputId}
-        .inputTitle=${inputTitle as any}
-        aria-describedby="${inputId}-feedback"
-        @change=${(event: Event) => this._updateForm(event, propertyName, propertySchema, rowId)}
-        .value=${propertyValue}
+        .name=${schema.id}
+        id=${schema.id}
+        class=${classMap(getClassesRecord(schema.valid))}
+        .inputTitle=${schema.title}
+        aria-describedby="${schema.id}-feedback"
         .maxSize=${maxSize}
         .accept=${inputFileAccept}
+        .value=${value}
+        @change=${(e: CustomEvent) => this._updateForm(schema, e.detail)}
       ></livechat-image-file-input>
     `
   }
 
-  protected _getInputValidationClass = (propertyName: string, originalIndex: number): Record<string, boolean> => {
-    const validationErrorTypes: ValidationErrorType[] | undefined =
-      this.validations?.[`${originalIndex}.${propertyName}`]
-
-    return validationErrorTypes !== undefined
-      ? validationErrorTypes.length
-        ? { 'is-invalid': true }
-        : { 'is-valid': true }
-      : {}
-  }
-
-  protected _renderFeedback = (
-    inputId: string,
-    propertyName: string,
-    originalIndex: number
-  ): TemplateResult | typeof nothing => {
+  protected _renderFeedback = (schema: FieldSchema): TemplateResult | typeof nothing => {
     const errorMessages: TemplateResult[] = []
-    const validationErrorTypes: ValidationErrorType[] | undefined =
-      this.validations?.[`${originalIndex}.${propertyName}`]
+    const validationErrorTypes: ValidationErrorType[] | undefined = this.validations?.[schema.path]
 
     // FIXME: this code is duplicated in channel-configuration
     if (validationErrorTypes !== undefined && validationErrorTypes.length !== 0) {
@@ -516,7 +338,7 @@ export class FormBaseElement extends LivechatElement {
         errorMessages.push(html`${ptTr(LOC_INVALID_VALUE_TOO_LONG)}`)
       }
 
-      return html`<div id="${inputId}-feedback" class="invalid-feedback">${errorMessages}</div>`
+      return html`<div id="${schema.id}-feedback" class="invalid-feedback">${errorMessages}</div>`
     } else {
       return nothing
     }
