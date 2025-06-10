@@ -89,6 +89,29 @@ interface ChannelLiveChatInfos extends ChannelInfos {
   livechatConfigurationUri: string
 }
 
+// interface ChannelValue<T = any> {
+//   value: T
+//   forced: boolean
+// }
+
+export type ChannelValue<Mode extends ChannelConfigMode, T> = Mode extends 'instance' ? {
+  value: T
+  forced: boolean
+} : T
+export type ChannelEntry<
+  Mode extends ChannelConfigMode,
+  T extends Record<string, any>
+> = { uuid: string } & Mode extends 'instance' ? T : { enabled: boolean } & T
+
+// interface PossiblyForcedValue<T = any> extends InstanceForcedValue<T> {
+//   used: boolean
+// }
+export enum CHANNEL_CONFIG_MODE {
+  instance = 'instance',
+  regular = 'regular'
+}
+export type ChannelConfigMode = keyof typeof CHANNEL_CONFIG_MODE
+
 interface ChannelConfigurationOptions {
   bot: {
     enabled: boolean
@@ -114,6 +137,39 @@ interface ChannelConfigurationOptions {
     anonymize: boolean // comes with Livechat 11.0.0
   }
 }
+
+export interface GenericChannelConfig<Mode extends ChannelConfigMode = 'regular'> {
+  bot: {
+    enabled: ChannelValue<Mode, boolean>
+    nickname?: ChannelValue<Mode, string>
+    forbiddenWords: Array<ChannelEntry<Mode, ChannelForbiddenWords>>
+    quotes: ChannelQuotes[]
+    commands: ChannelCommands[]
+    forbidSpecialChars: ChannelForbidSpecialChars
+    noDuplicate: ChannelNoDuplicate
+    // TODO: bannedJIDs: string[]
+  }
+  slowMode: {
+    duration: number
+  }
+  mute: { // comes with Livechat 10.2.0
+    anonymous: boolean
+    // TODO: https://github.com/JohnXLivingston/peertube-plugin-livechat/issues/127
+    // nonFollowers: boolean (or a number of seconds?)
+  }
+  terms?: string // comes with Livechat 10.2.0
+  moderation: { // comes with Livechat 10.3.0
+    delay: number
+    anonymize: boolean // comes with Livechat 11.0.0
+  }
+}
+
+type Unwrap1<T> = { [K in keyof T]: T[K] extends object ? Unwrap<T[K]> : T[K] }
+type Unwrap<T> = T extends Record<string, any> ? { [K in keyof T]: Unwrap<T[K]> } : T
+
+type O = GenericChannelConfig<'regular'>
+
+type T = Unwrap<O>
 
 interface ChannelForbiddenWords {
   entries: string[]

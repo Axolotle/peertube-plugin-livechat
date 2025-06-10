@@ -17,6 +17,7 @@ import { fillVideoCustomFields } from '../custom-fields'
 import { videoHasWebchat } from '../../../shared/lib/video'
 import * as path from 'path'
 import * as fs from 'fs'
+import { ChannelConfigManager } from 'lib/configuration/channel/channel-class'
 
 let singleton: RoomChannel | undefined
 
@@ -302,6 +303,7 @@ class RoomChannel {
       await fs.promises.writeFile(this.dataFilePath, JSON.stringify(data))
 
       this.logger.debug('room-channel sync done, must sync room conf now')
+      const { getChannelConfig } = ChannelConfigManager.singleton()
       // Note: getChannelConfigurationOptions has no cache for now, so we will handle it here
       const channelConfigurationOptionsCache = new Map<number, ChannelConfigurationOptions | null>()
       const roomJIDs = Array.from(this.roomConfToUpdate.keys())
@@ -320,7 +322,7 @@ class RoomChannel {
           try {
             channelConfigurationOptionsCache.set(
               channelId,
-              await getChannelConfigurationOptions(this.options, channelId)
+              await getChannelConfig(channelId, false)
             )
           } catch (err) {
             this.logger.error(err as string)

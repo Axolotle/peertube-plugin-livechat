@@ -25,46 +25,95 @@ type ConfigHandler = ConfigHandlers[0]
  * @param channelInfos Info from channel from which we want to get infos
  * @returns Channel configuration data, or null if nothing is stored
  */
-async function getChannelConfigurationOptions (
+async function getRawChannelConfigurationOptions (
   options: RegisterServerOptions,
-  channelId: number | string
+  filePath: string
 ): Promise<ChannelConfigurationOptions | null> {
   const logger = options.peertubeHelpers.logger
-  const filePath = _getFilePath(options, channelId)
   if (!fs.existsSync(filePath)) {
-    logger.debug('No stored data for channel, returning null')
+    logger.debug('No stored config data found, returning null')
     return null
   }
   const content = await fs.promises.readFile(filePath, {
     encoding: 'utf-8'
   })
-  const sanitized = await sanitizeChannelConfigurationOptions(options, channelId, JSON.parse(content), 'read')
+  const sanitized = await sanitizeChannelConfigurationOptions(options, JSON.parse(content), 'read')
   return sanitized
+}
+
+/**
+ * Get saved configuration options for the given channel merged with instance wide options.
+ * Can throw an exception.
+ * @param options Peertube server options
+ * @param channelId channel id
+ * @returns Channel configuration data
+ */
+async function getChannelConfigurationOptions (
+  options: RegisterServerOptions,
+  channelId: number | string
+): Promise<ChannelConfigurationOptions> {
+  const logger = options.peertubeHelpers.logger
+
+  const instanceConfig = await getRawChannelConfigurationOptions(options, 'instance')
+  const rawConfig = await getRawChannelConfigurationOptions(options, channelId)
+  if (!instanceConfig) {
+    logger.debug('No instance wide channel configuration found, returning untouched channel configuration')
+    return rawConfig || getDefaultChannelConfigurationOptions(options)
+  }
+
+  if (!rawConfig) {
+    return instanceConfig || getDefaultChannelConfigurationOptions(options)
+  }
+
+  if (instanceConfig.bot.enabled) {
+    if (!rawConfig.bot.enabled) {
+      rawConfig.bot = instanceConfig.bot
+    } else {
+      rawConfig.bot.forbiddenWords = [...instanceConfig.bot.forbiddenWords, ...rawConfig.bot.forbiddenWords]
+      rawConfig.bot.commands = [...instanceConfig.bot.commands, ...rawConfig.bot.commands]
+      if (instanceConfig.bot.forbidSpecialChars.enabled) {
+        rawConfig.bot.forbidSpecialChars = instanceConfig.bot.forbidSpecialChars
+      }
+      if (instanceConfig.bot.noDuplicate.enabled) {
+        rawConfig.bot.noDuplicate = instanceConfig.bot.noDuplicate
+      }
+    }
+  }
+
+  if (instanceConfig.slowMode.duration) {
+    rawConfig.slowMode.duration = instanceConfig.slowMode.duration
+  }
+
+  if (instanceConfig.terms) {
+    rawConfig.terms = rawConfig.terms ? `${instanceConfig.terms}\n\n${rawConfig.terms}` : instanceConfig.terms
+  }
+
+  return rawConfig
 }
 
 function getDefaultChannelConfigurationOptions (_options: RegisterServerOptions): ChannelConfigurationOptions {
   return {
     bot: {
-      enabled: false,
+      enabled: false, // can force
       nickname: 'Sepia',
-      forbiddenWords: [],
-      forbidSpecialChars: {
+      forbiddenWords: [], // can force + merge
+      forbidSpecialChars: { // can force + merge
         enabled: false,
         reason: '',
         tolerance: forbidSpecialCharsDefaultTolerance,
         applyToModerators: false
       },
-      noDuplicate: {
+      noDuplicate: { // can force
         enabled: false,
         reason: '',
         delay: noDuplicateDefaultDelay,
         applyToModerators: false
       },
       quotes: [],
-      commands: []
+      commands: [] // merge
     },
     slowMode: {
-      duration: 0
+      duration: 0 // can force
     },
     mute: {
       anonymous: false
@@ -73,7 +122,7 @@ function getDefaultChannelConfigurationOptions (_options: RegisterServerOptions)
       delay: 0,
       anonymize: false
     },
-    terms: undefined
+    terms: undefined // can force + merge
   }
 }
 
@@ -85,11 +134,9 @@ function getDefaultChannelConfigurationOptions (_options: RegisterServerOptions)
  */
 async function storeChannelConfigurationOptions (
   options: RegisterServerOptions,
-  channelId: number | string,
+  filePath: string,
   channelConfigurationOptions: ChannelConfigurationOptions
 ): Promise<void> {
-  const filePath = _getFilePath(options, channelId)
-
   if (!fs.existsSync(filePath)) {
     const dir = path.dirname(filePath)
     if (!fs.existsSync(dir)) {
@@ -103,7 +150,7 @@ async function storeChannelConfigurationOptions (
     encoding: 'utf-8'
   })
 
-  RoomChannel.singleton().refreshChannelConfigurationOptions(channelId)
+  // RoomChannel.singleton().refreshChannelConfigurationOptions(channelId)
 }
 
 /**
@@ -364,6 +411,7 @@ function _getFilePath (
 }
 
 export {
+  getRawChannelConfigurationOptions,
   getChannelConfigurationOptions,
   getDefaultChannelConfigurationOptions,
   channelConfigurationOptionsToBotRoomConf,

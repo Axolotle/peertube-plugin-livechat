@@ -26,7 +26,6 @@ type SanitizeMode = 'validation' | 'read'
  */
 async function sanitizeChannelConfigurationOptions (
   _options: RegisterServerOptions,
-  _channelId: number | string,
   data: unknown,
   mode: SanitizeMode
 ): Promise<ChannelConfigurationOptions> {

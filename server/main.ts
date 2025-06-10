@@ -23,6 +23,7 @@ import { updateForbidSpecialCharsHandler } from './lib/prosody/migration/migrate
 import { Emojis } from './lib/emojis'
 import { LivechatProsodyAuth } from './lib/prosody/auth'
 import decache from 'decache'
+import { ChannelConfigManager } from 'lib/configuration/channel/channel-class'
 
 // FIXME: Peertube unregister don't have any parameter.
 // Using this global variable to fix this, so we can use helpers to unregister.
@@ -54,6 +55,7 @@ async function register (options: RegisterServerOptions): Promise<any> {
   const roomChannelSingleton = await RoomChannel.initSingleton(options)
   // roomChannelNeedsDataInit: if true, means that the data file does not exist (or is invalid), so we must initiate it
   const roomChannelNeedsDataInit = !await roomChannelSingleton.readData()
+  await ChannelConfigManager.initSingleton(options)
 
   // BotsCtl.initSingleton() will force reload the bots conf files, so must be done before generating Prosody Conf.
   await BotsCtl.initSingleton(options)
@@ -138,6 +140,7 @@ async function unregister (): Promise<any> {
   unloadDebugMode()
 
   await RoomChannel.destroySingleton()
+  await ChannelConfigManager.destroySingleton()
   await BotConfiguration.destroySingleton()
   await ExternalAuthOIDC.destroySingletons()
   await Emojis.destroySingleton()

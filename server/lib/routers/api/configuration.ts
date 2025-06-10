@@ -11,6 +11,7 @@ import { checkConfigurationEnabledMiddleware } from '../../middlewares/configura
 import {
   getChannelConfigurationOptions,
   getDefaultChannelConfigurationOptions,
+  getRawChannelConfigurationOptions,
   storeChannelConfigurationOptions
 } from '../../configuration/channel/storage'
 import { sanitizeChannelConfigurationOptions } from '../../configuration/channel/sanitize'
@@ -18,6 +19,8 @@ import { getConverseJSParams } from '../../../lib/conversejs/params'
 import { Emojis } from '../../../lib/emojis'
 import { RoomChannel } from '../../../lib/room-channel'
 import { updateProsodyRoom } from '../../../lib/prosody/api/manage-rooms'
+import { isUserAdmin } from 'lib/helpers'
+import { ChannelConfigManager } from 'lib/configuration/channel/channel-class'
 
 async function initConfigurationApiRouter (options: RegisterServerOptions, router: Router): Promise<void> {
   const logger = options.peertubeHelpers.logger
@@ -45,6 +48,36 @@ async function initConfigurationApiRouter (options: RegisterServerOptions, route
     }
   ))
 
+  router.get('/configuration/instance-channel', asyncMiddleware([
+    async (req: Request, res: Response) => {
+      const { getInstanceConfig } = ChannelConfigManager.singleton()
+      res.status(200)
+      res.json({ configuration: getInstanceConfig() })
+    }
+  ]))
+
+  class ValidationError extends Error {}
+
+  router.post('/configuration/instance-channel', asyncMiddleware([
+    async (req: Request, res: Response, _next: NextFunction) => {
+      if (!await isUserAdmin(options, res)) {
+        logger.warn('Non-admin user tries to update the instance channel configuration.')
+        res.sendStatus(403)
+        return
+      }
+
+      try {
+        const { updateInstanceConfig } = ChannelConfigManager.singleton()
+        const instanceConfig = await updateInstanceConfig(req.body)
+        res.status(200)
+        res.json({ configuration: instanceConfig })
+      } catch (err) {
+        logger.warn(err)
+        res.sendStatus(err instanceof ValidationError ? 400 : 500)
+      }
+    }
+  ]))
+
   router.get('/configuration/channel/:channelId', asyncMiddleware([
     checkConfigurationEnabledMiddleware(options),
     getCheckConfigurationChannelMiddleware(options),
@@ -55,17 +88,16 @@ async function initConfigurationApiRouter (options: RegisterServerOptions, route
         return
       }
       const channelInfos = res.locals.channelInfos as ChannelInfos
-
-      const channelOptions =
-        await getChannelConfigurationOptions(options, channelInfos.id) ??
-        getDefaultChannelConfigurationOptions(options)
+      const { getChannelConfig } = ChannelConfigManager.singleton()
+      // const channelOptions =
+      //   await getChannelConfigurationOptions(options, channelInfos.id) ??
+      //   getDefaultChannelConfigurationOptions(options)
 
       const result: ChannelConfiguration = {
         channel: channelInfos,
-        configuration: channelOptions
+        configuration: await getChannelConfig(channelInfos.id)
       }
-      res.status(200)
-      res.json(result)
+      res.status(200).json(result)
     }
   ]))
 
@@ -81,37 +113,42 @@ async function initConfigurationApiRouter (options: RegisterServerOptions, route
       const channelInfos = res.locals.channelInfos as ChannelInfos
       logger.debug('Trying to save ChannelConfigurationOptions')
 
-      let channelOptions
+      // let channelOptions
       try {
         // Note: the front-end should do some input validation.
         // If there is any invalid value, we just return a 400 error.
         // The frontend should have prevented to post invalid data.
-
-        // Note: if !bot.enabled, we wont try to save hidden fields values, to minimize the risk of error
-        if (req.body.bot?.enabled === false) {
-          logger.debug('Bot disabled, loading the previous bot conf to not override hidden fields')
-          const channelOptions =
-            await getChannelConfigurationOptions(options, channelInfos.id) ??
-            getDefaultChannelConfigurationOptions(options)
-          req.body.bot = channelOptions.bot
-          req.body.bot.enabled = false
+        const { updateChannelConfig } = ChannelConfigManager.singleton()
+        const result: ChannelConfiguration = {
+          channel: channelInfos,
+          configuration: await updateChannelConfig(channelInfos.id, req.body)
         }
-        // TODO: Same for forbidSpecialChars/noDuplicate: if disabled, don't save reason and tolerance
-        //   (disabling for now, because it is not acceptable to load twice the channel configuration.
-        //   Must find better way)
-        // if (req.body.bot?.enabled === true && req.body.bot.forbidSpecialChars?.enabled === false) {
+        res.status(200).json(result)
+        // // Note: if !bot.enabled, we wont try to save hidden fields values, to minimize the risk of error
+        // if (req.body.bot?.enabled === false) {
         //   logger.debug('Bot disabled, loading the previous bot conf to not override hidden fields')
         //   const channelOptions =
         //     await getChannelConfigurationOptions(options, channelInfos.id) ??
         //     getDefaultChannelConfigurationOptions(options)
-        //   req.body.bot.forbidSpecialChars.reason = channelOptions.bot.forbidSpecialChars.reason
-        //   req.body.bot.forbidSpecialChars.tolerance = channelOptions.bot.forbidSpecialChars.tolerance
-        //   req.body.bot.forbidSpecialChars.applyToModerators = channelOptions.bot.forbidSpecialChars.applyToModerators
-        //   req.body.bot.forbidSpecialChars.enabled = false
-        //    ... NoDuplicate...
+        //   req.body.bot = channelOptions.bot
+        //   req.body.bot.enabled = false
         // }
-        channelOptions = await sanitizeChannelConfigurationOptions(options, channelInfos.id, req.body, 'validation')
-      } catch (err: any) {
+        // // TODO: Same for forbidSpecialChars/noDuplicate: if disabled, don't save reason and tolerance
+        // //   (disabling for now, because it is not acceptable to load twice the channel configuration.
+        // //   Must find better way)
+        // // if (req.body.bot?.enabled === true && req.body.bot.forbidSpecialChars?.enabled === false) {
+        // //   logger.debug('Bot disabled, loading the previous bot conf to not override hidden fields')
+        // //   const channelOptions =
+        // //     await getChannelConfigurationOptions(options, channelInfos.id) ??
+        // //     getDefaultChannelConfigurationOptions(options)
+        // //   req.body.bot.forbidSpecialChars.reason = channelOptions.bot.forbidSpecialChars.reason
+        // //   req.body.bot.forbidSpecialChars.tolerance = channelOptions.bot.forbidSpecialChars.tolerance
+        // //   req.body.bot.forbidSpecialChars.applyToModerators = channelOptions.bot.forbidSpecialChars.applyToModerators
+        // //   req.body.bot.forbidSpecialChars.enabled = false
+        // //    ... NoDuplicate...
+        // // }
+        // channelOptions = await sanitizeChannelConfigurationOptions(options, req.body, 'validation')
+      } catch (err) {
         logger.warn(err.message as string)
         if (err.validationErrorMessage && (typeof err.validationErrorMessage === 'string')) {
           res.status(400)
@@ -121,17 +158,16 @@ async function initConfigurationApiRouter (options: RegisterServerOptions, route
         } else {
           res.sendStatus(400)
         }
-        return
       }
 
-      logger.debug('Data seems ok, storing them.')
-      const result: ChannelConfiguration = {
-        channel: channelInfos,
-        configuration: channelOptions
-      }
-      await storeChannelConfigurationOptions(options, channelInfos.id, channelOptions)
-      res.status(200)
-      res.json(result)
+      // logger.debug('Data seems ok, storing them.')
+      // const result: ChannelConfiguration = {
+      //   channel: channelInfos,
+      //   configuration: channelOptions
+      // }
+      // await storeChannelConfigurationOptions(options, channelInfos.id, channelOptions)
+      // res.status(200)
+      // res.json(result)
     }
   ]))
 
