@@ -42,9 +42,6 @@ export class DynamicTableFormElement extends FormBaseElement {
   @property({ attribute: false })
   public maxLines?: number = undefined
 
-  @property({ attribute: false })
-  public validationPrefix = ''
-
   @property({ type: Array, attribute: false })
   public override form: FormArray = []
 
@@ -240,7 +237,7 @@ export class DynamicTableFormElement extends FormBaseElement {
     const baseSchema = this.schema[propertyName] ?? {}
     const baseId = this.path.toLowerCase().replace(/[_.]/g, '-')
     const localId = propertyName.toLowerCase().replace(/[_.]/g, '-')
-    const path = `[${rowId}].${propertyName}`
+    const path = `${rowId}.${propertyName}`
     const schema = {
       ...baseSchema,
       path,
@@ -257,7 +254,7 @@ export class DynamicTableFormElement extends FormBaseElement {
   }
 
   protected override _updateForm = (schema: FieldSchema, value: any): void => {
-    const rowId = parseInt(schema.path.split('.')[0].replace(/\[(\d+)\]/, '$1'))
+    const rowId = parseInt(schema.path.split('.')[0])
 
     if (value === undefined) {
       this.logger.warn('Could not update property : Target or value was undefined')

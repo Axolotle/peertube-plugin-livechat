@@ -78,6 +78,9 @@ export class FormBaseElement extends LivechatElement {
   @property({ type: Object, attribute: false })
   public validations: Record<string, ValidationErrorType[]> = {}
 
+  @property({ attribute: false })
+  public validationPrefix = ''
+
   protected _dispatchUpdateFormEvent = (): void => {
     this.requestUpdate('form')
     this.dispatchEvent(new CustomEvent('update-form', { detail: this.form, composed: true }))
@@ -326,7 +329,8 @@ export class FormBaseElement extends LivechatElement {
 
   protected _renderFeedback = (schema: FieldSchema): TemplateResult | typeof nothing => {
     const errorMessages: TemplateResult[] = []
-    const validationErrorTypes: ValidationErrorType[] | undefined = this.validations?.[schema.path]
+    const validationErrorTypes: ValidationErrorType[] | undefined =
+      this.validations?.[`${this.validationPrefix ? this.validationPrefix + '.' : ''}${schema.path}`]
 
     // FIXME: this code is duplicated in channel-configuration
     if (validationErrorTypes !== undefined && validationErrorTypes.length !== 0) {
