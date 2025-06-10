@@ -29,15 +29,12 @@ interface DynamicFormHeaderCellData {
 }
 
 export type DynamicFormHeader = Record<string, DynamicFormHeaderCellData>
-export type DynamicFormSchema = Record<string, PartialFieldSchema>
+export type DynamicFormSchema = PartialFieldSchema[]
 
 @customElement('livechat-dynamic-table-form')
 export class DynamicTableFormElement extends FormBaseElement {
   @property({ attribute: false })
-  public header: DynamicFormHeader = {}
-
-  @property({ attribute: false })
-  public schema: DynamicFormSchema = {}
+  public schema: DynamicFormSchema = []
 
   @property({ attribute: false })
   public maxLines?: number = undefined
@@ -50,9 +47,6 @@ export class DynamicTableFormElement extends FormBaseElement {
 
   @state()
   private _lastRowId = 1
-
-  @property({ attribute: false })
-  private columnOrder: string[] = []
 
   // fixes situations when list has been reinitialized or changed outside of CustomElement
   protected _updateLastRowId = (): void => {
@@ -136,11 +130,6 @@ export class DynamicTableFormElement extends FormBaseElement {
       }
     }
 
-    if (this.columnOrder.length !== Object.keys(this.header).length) {
-      this.columnOrder = this.columnOrder.filter((key) => Object.keys(this.header).includes(key))
-      this.columnOrder.push(...Object.keys(this.header).filter((key) => !this.columnOrder.includes(key)))
-    }
-
     return html`
       <div class="table-responsive">
         <table class="table" id=${inputId}>
@@ -155,44 +144,45 @@ export class DynamicTableFormElement extends FormBaseElement {
   }
 
   protected _renderHeader = (): TemplateResult => {
-    const columns = Object.entries(this.header).sort(
-      ([k1, _1], [k2, _2]) => this.columnOrder.indexOf(k1) - this.columnOrder.indexOf(k2)
-    )
-    return html`<thead>
-      <tr>
-        ${columns.map(([_, v]) => this._renderHeaderCell(v))}
-        <th scope="col"></th>
-      </tr>
-      <tr>
-        ${columns.map(([_, v]) => this._renderHeaderDescriptionCell(v))}
-        <th scope="col"></th>
-      </tr>
-    </thead>`
+    return html`
+      <thead>
+        <tr>
+          ${repeat(this.schema, (schema) => schema.path, this._renderHeaderCell)}
+          <th scope="col"></th>
+        </tr>
+        <tr>
+          ${repeat(this.schema, (schema) => schema.path, this._renderHeaderDescriptionCell)}
+          <th scope="col"></th>
+        </tr>
+      </thead>
+    `
   }
 
-  protected _renderHeaderCell = (headerCellData: DynamicFormHeaderCellData): TemplateResult => {
-    return html`<th scope="col" class=${headerCellData.headerClassList?.join(' ') ?? ''}>
-      <div data-toggle="tooltip" data-placement="bottom" data-html="true">${headerCellData.colName}</div>
-    </th>`
+  protected _renderHeaderCell = (schema: PartialFieldSchema): TemplateResult => {
+    return html`
+      <th scope="col" class=${schema.headerClassList?.join(' ') ?? ''}>
+        <div data-toggle="tooltip" data-placement="bottom" data-html="true">${schema.label}</div>
+      </th>
+    `
   }
 
-  protected _renderHeaderDescriptionCell = (headerCellData: DynamicFormHeaderCellData): TemplateResult => {
+  protected _renderHeaderDescriptionCell = (schema: PartialFieldSchema): TemplateResult => {
     const classList = ['livechat-dynamic-table-form-description-header']
-    if (headerCellData.headerClassList) {
-      classList.push(...headerCellData.headerClassList)
+    if (schema.headerClassList) {
+      classList.push(...schema.headerClassList)
     }
-    return html`<th scope="col" class=${classList.join(' ')}>${headerCellData.description ?? ''}</th>`
+    return html`<th scope="col" class=${classList.join(' ')}>${schema.description ?? ''}</th>`
   }
 
   protected _renderDataRow = (rowData: DynamicTableRowData): TemplateResult => {
     const inputId = `peertube-livechat-${this.path.replace(/_/g, '-')}-row-${rowData._id}`
 
     return html`<tr id=${inputId}>
-      ${Object.keys(this.header)
-        .sort((k1, k2) => this.columnOrder.indexOf(k1) - this.columnOrder.indexOf(k2))
-        .map((key) =>
-          this._renderDataCell(key, rowData.row[key] ?? this.schema[key].default, rowData._id, rowData._originalIndex)
-        )}
+      ${repeat(
+        this.schema,
+        (schema) => schema.path,
+        (schema) => this._renderDataCell(schema, rowData)
+      )}
       <td class="form-group">
         <button
           type="button"
@@ -223,33 +213,28 @@ export class DynamicTableFormElement extends FormBaseElement {
             ${unsafeHTML(AddSVG)}
           </button>
         </td>
-        ${Object.values(this.header).map(() => html`<td></td>`)}
+        ${this.schema.map(() => html`<td></td>`)}
       </tr>
     </tfoot>`
   }
 
-  protected _renderDataCell = (
-    propertyName: string,
-    propertyValue: FormTypes,
-    rowId: number,
-    originalIndex: number
-  ): TemplateResult => {
-    const baseSchema = this.schema[propertyName] ?? {}
+  protected _renderDataCell = (baseSchema: PartialFieldSchema, rowData: DynamicTableRowData): TemplateResult => {
+    const value = rowData.row[baseSchema.path] ?? baseSchema.default
     const baseId = this.path.toLowerCase().replace(/[_.]/g, '-')
-    const localId = propertyName.toLowerCase().replace(/[_.]/g, '-')
-    const path = `${rowId}.${propertyName}`
+    const localId = baseSchema.path.toLowerCase().replace(/[_.]/g, '-')
+    const path = `${rowData._id}.${baseSchema.path}`
     const schema = {
       ...baseSchema,
       path,
-      id: `peertube-livechat-${baseId}-row-${originalIndex}-${localId}-${rowId}`,
-      title: baseSchema.title ?? this.header[propertyName]?.colName,
+      id: `peertube-livechat-${baseId}-row-${localId}-${rowData._id}`,
+      title: baseSchema.title ?? baseSchema.label,
       valid: !!this.validations?.[path]?.length
     }
     const classList = ['form-group']
     if (schema.colClassList?.length) classList.push(...schema.colClassList)
 
     return html`
-      <td class=${classList.join(' ')}>${this._renderField(schema, propertyValue)} ${this._renderFeedback(schema)}</td>
+      <td class=${classList.join(' ')}>${this._renderField(schema, value)} ${this._renderFeedback(schema)}</td>
     `
   }
 

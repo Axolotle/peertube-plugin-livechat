@@ -43,6 +43,8 @@ export type FieldKind =
 export interface PartialFieldSchema {
   kind: FieldKind
   path: string
+  label: string | DirectiveResult
+  description?: string | DirectiveResult
   title?: string | DirectiveResult
   default?: FormTypes
   min?: number
@@ -53,6 +55,7 @@ export interface PartialFieldSchema {
   options?: Record<string, string>
   datalist?: FormTypes[]
   separator?: string
+  headerClassList?: string[]
   colClassList?: string[] // CSS classes to add to the <td> element.
 }
 

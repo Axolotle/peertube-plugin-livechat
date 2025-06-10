@@ -6,110 +6,92 @@
 /* eslint-disable @stylistic/indent */
 
 import type { ChannelConfigurationElement } from '../channel-configuration'
-import type { DynamicFormHeader, DynamicFormSchema } from '../../../lib/elements/dynamic-table-form'
+import type { DynamicFormSchema } from '../../../lib/elements/form/form-table'
 import { ptTr } from '../../../lib/directives/translation'
 import { html, TemplateResult } from 'lit'
 import { classMap } from 'lit/directives/class-map.js'
 import { noDuplicateMaxDelay, forbidSpecialCharsMaxTolerance } from 'shared/lib/constants'
 
 export function tplChannelConfiguration (el: ChannelConfigurationElement): TemplateResult {
-  const tableHeaderList: Record<string, DynamicFormHeader> = {
-    forbiddenWords: {
-      entries: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_LABEL)
-      },
-      regexp: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_REGEXP_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_REGEXP_DESC)
-      },
-      applyToModerators: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_APPLYTOMODERATORS_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_APPLYTOMODERATORS_DESC)
-      },
-      label: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_LABEL_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_LABEL_DESC)
-      },
-      reason: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_RETRACTATION_REASON_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_RETRACTATION_REASON_DESC)
-      },
-      comments: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_COMMENTS_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_COMMENTS_DESC)
-      }
-    },
-    quotes: {
-      messages: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_LABEL2),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_DESC2)
-      },
-      delay: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_DELAY_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_DELAY_DESC)
-      }
-    },
-    commands: {
-      command: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_CMD_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_CMD_DESC)
-      },
-      message: {
-        colName: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_MESSAGE_LABEL),
-        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_MESSAGE_DESC)
-      }
-    }
-  }
   const tableSchema: Record<string, DynamicFormSchema> = {
-    forbiddenWords: {
-      entries: {
-        inputType: 'tags',
+    forbiddenWords: [
+      {
+        kind: 'tags',
+        path: 'entries',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_LABEL),
         default: [],
         separator: '\n'
       },
-      regexp: {
-        inputType: 'checkbox',
+      {
+        kind: 'checkbox',
+        path: 'regexp',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_REGEXP_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_REGEXP_DESC),
         default: false
       },
-      applyToModerators: {
-        inputType: 'checkbox',
+      {
+        kind: 'checkbox',
+        path: 'applyToModerators',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_APPLYTOMODERATORS_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_APPLYTOMODERATORS_DESC),
         default: false
       },
-      label: {
-        inputType: 'text',
+      {
+        kind: 'text',
+        path: 'label',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_LABEL_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_LABEL_DESC),
         default: ''
       },
-      reason: {
-        inputType: 'text',
+      {
+        kind: 'text',
+        path: 'reason',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_RETRACTATION_REASON_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_RETRACTATION_REASON_DESC),
         default: ''
       },
-      comments: {
-        inputType: 'textarea',
+      {
+        kind: 'textarea',
+        path: 'comments',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_COMMENTS_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_FORBIDDEN_WORDS_COMMENTS_DESC),
         default: ''
       }
-    },
-    quotes: {
-      messages: {
-        inputType: 'textarea',
+    ],
+    quotes: [
+      {
+        kind: 'textarea',
+        path: 'messages',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_LABEL2),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_DESC2),
         default: [],
         separator: '\n'
       },
-      delay: {
-        inputType: 'number',
+      {
+        kind: 'number',
+        path: 'delay',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_DELAY_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_QUOTE_DELAY_DESC),
         default: 10,
         min: 1
       }
-    },
-    commands: {
-      command: {
-        inputType: 'text',
+    ],
+    commands: [
+      {
+        kind: 'text',
+        path: 'command',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_CMD_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_CMD_DESC),
         default: ''
       },
-      message: {
-        inputType: 'text',
+      {
+        kind: 'text',
+        path: 'message',
+        label: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_MESSAGE_LABEL),
+        description: ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_COMMAND_MESSAGE_DESC),
         default: ''
       }
-    }
+    ]
   }
 
   return html`
@@ -587,12 +569,11 @@ export function tplChannelConfiguration (el: ChannelConfigurationElement): Templ
             .helpPage=${'documentation/user/streamers/bot/forbidden_words'}>
           </livechat-configuration-section-header>
           <livechat-dynamic-table-form
-            .header=${tableHeaderList.forbiddenWords}
             .schema=${tableSchema.forbiddenWords}
-            .validation=${el.validationError?.properties}
+            .validations=${el.validationError?.properties}
             .validationPrefix=${'bot.forbiddenWords'}
-            .rows=${el.channelConfiguration?.configuration.bot.forbiddenWords}
-            @update=${(e: CustomEvent) => {
+            .form=${el.channelConfiguration?.configuration.bot.forbiddenWords}
+            @update-form=${(e: CustomEvent) => {
                 el.resetValidation(e)
                 if (el.channelConfiguration) {
                   el.channelConfiguration.configuration.bot.forbiddenWords = e.detail
@@ -600,7 +581,7 @@ export function tplChannelConfiguration (el: ChannelConfigurationElement): Templ
                 }
               }
             }
-            .formName=${'forbidden-words'}
+            .path=${'forbidden-words'}
           ></livechat-dynamic-table-form>
 
           <livechat-configuration-section-header
@@ -609,12 +590,11 @@ export function tplChannelConfiguration (el: ChannelConfigurationElement): Templ
             .helpPage=${'documentation/user/streamers/bot/quotes'}>
           </livechat-configuration-section-header>
           <livechat-dynamic-table-form
-            .header=${tableHeaderList.quotes}
             .schema=${tableSchema.quotes}
-            .validation=${el.validationError?.properties}
+            .validations=${el.validationError?.properties}
             .validationPrefix=${'bot.quotes'}
-            .rows=${el.channelConfiguration?.configuration.bot.quotes}
-            @update=${(e: CustomEvent) => {
+            .form=${el.channelConfiguration?.configuration.bot.quotes}
+            @update-form=${(e: CustomEvent) => {
                 el.resetValidation(e)
                 if (el.channelConfiguration) {
                   el.channelConfiguration.configuration.bot.quotes = e.detail
@@ -622,7 +602,7 @@ export function tplChannelConfiguration (el: ChannelConfigurationElement): Templ
                 }
               }
             }
-            .formName=${'quote'}
+            .path=${'quote'}
           ></livechat-dynamic-table-form>
 
           <livechat-configuration-section-header
@@ -631,12 +611,11 @@ export function tplChannelConfiguration (el: ChannelConfigurationElement): Templ
             .helpPage=${'documentation/user/streamers/bot/commands'}>
           </livechat-configuration-section-header>
           <livechat-dynamic-table-form
-            .header=${tableHeaderList.commands}
             .schema=${tableSchema.commands}
-            .validation=${el.validationError?.properties}
+            .validations=${el.validationError?.properties}
             .validationPrefix=${'bot.commands'}
-            .rows=${el.channelConfiguration?.configuration.bot.commands}
-            @update=${(e: CustomEvent) => {
+            .form=${el.channelConfiguration?.configuration.bot.commands}
+            @update-form=${(e: CustomEvent) => {
                 el.resetValidation(e)
                 if (el.channelConfiguration) {
                   el.channelConfiguration.configuration.bot.commands = e.detail
@@ -644,7 +623,7 @@ export function tplChannelConfiguration (el: ChannelConfigurationElement): Templ
                 }
               }
             }
-            .formName=${'command'}
+            .path=${'command'}
           ></livechat-dynamic-table-form>
         `}
 

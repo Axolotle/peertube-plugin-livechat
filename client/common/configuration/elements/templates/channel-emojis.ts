@@ -6,35 +6,31 @@
 /* eslint-disable @stylistic/indent */
 
 import type { ChannelEmojisElement } from '../channel-emojis'
-import type { DynamicFormHeader, DynamicFormSchema } from '../../../lib/elements/dynamic-table-form'
+import type { DynamicFormSchema } from '../../../lib/elements/form/form-table'
 import { maxEmojisPerChannel } from 'shared/lib/emojis'
 import { ptTr } from '../../../lib/directives/translation'
 import { html, TemplateResult } from 'lit'
 
 export function tplChannelEmojis (el: ChannelEmojisElement): TemplateResult {
-  const tableHeaderList: DynamicFormHeader = {
-    sn: {
-      colName: ptTr(LOC_LIVECHAT_EMOJIS_SHORTNAME),
+  const tableSchema: DynamicFormSchema = [
+    {
+      kind: 'text',
+      path: 'sn',
+      label: ptTr(LOC_LIVECHAT_EMOJIS_SHORTNAME),
       description: ptTr(LOC_LIVECHAT_EMOJIS_SHORTNAME_DESC),
+      default: '',
       headerClassList: ['peertube-livechat-emojis-col-sn']
     },
-    url: {
-      colName: ptTr(LOC_LIVECHAT_EMOJIS_FILE),
+    {
+      kind: 'image-file',
+      path: 'url',
+      label: ptTr(LOC_LIVECHAT_EMOJIS_FILE),
       description: ptTr(LOC_LIVECHAT_EMOJIS_FILE_DESC),
-      headerClassList: ['peertube-livechat-emojis-col-file']
-    }
-  }
-  const tableSchema: DynamicFormSchema = {
-    sn: {
-      inputType: 'text',
-      default: ''
-    },
-    url: {
-      inputType: 'image-file',
       default: '',
+      headerClassList: ['peertube-livechat-emojis-col-file'],
       colClassList: ['peertube-livechat-emojis-col-file']
     }
-  }
+  ]
   return html`
     <div
       class="margin-content peertube-plugin-livechat-configuration peertube-plugin-livechat-configuration-channel"
@@ -85,13 +81,12 @@ export function tplChannelEmojis (el: ChannelEmojisElement): TemplateResult {
         </div>
 
         <livechat-dynamic-table-form
-          .header=${tableHeaderList}
           .schema=${tableSchema}
           .maxLines=${maxEmojisPerChannel}
-          .validation=${el.validationError?.properties}
+          .validations=${el.validationError?.properties}
           .validationPrefix=${'emojis'}
-          .rows=${el.channelEmojisConfiguration?.emojis.customEmojis ?? []}
-          @update=${(e: CustomEvent) => {
+          .form=${el.channelEmojisConfiguration?.emojis.customEmojis ?? []}
+          @update-form=${(e: CustomEvent) => {
               el.resetValidation(e)
               if (el.channelEmojisConfiguration) {
                 el.channelEmojisConfiguration.emojis.customEmojis = e.detail

@@ -7,42 +7,37 @@
 
 import type { AdminFirewallElement } from '../elements/admin-firewall'
 import type { TemplateResult } from 'lit'
-import type { DynamicFormHeader, DynamicFormSchema } from '../../../lib/elements/dynamic-table-form'
+import type { DynamicFormSchema } from '../../../lib/elements/form/form-table'
 import { maxFirewallFiles, maxFirewallNameLength, maxFirewallFileSize } from 'shared/lib/admin-firewall'
 import { ptTr } from '../../../lib/directives/translation'
 import { html } from 'lit'
 
 export function tplAdminFirewall (el: AdminFirewallElement): TemplateResult {
-  const tableHeaderList: DynamicFormHeader = {
-    enabled: {
-      colName: ptTr(LOC_PROSODY_FIREWALL_FILE_ENABLED)
-    },
-    name: {
-      colName: ptTr(LOC_PROSODY_FIREWALL_NAME),
-      description: ptTr(LOC_PROSODY_FIREWALL_NAME_DESC),
-      headerClassList: ['peertube-livechat-admin-firewall-col-name']
-    },
-    content: {
-      colName: ptTr(LOC_PROSODY_FIREWALL_CONTENT),
-      headerClassList: ['peertube-livechat-admin-firewall-col-content']
-    }
-  }
-  const tableSchema: DynamicFormSchema = {
-    enabled: {
-      inputType: 'checkbox',
+  const tableSchema: DynamicFormSchema = [
+    {
+      kind: 'checkbox',
+      path: 'enabled',
+      label: ptTr(LOC_PROSODY_FIREWALL_FILE_ENABLED),
       default: true
     },
-    name: {
-      inputType: 'text',
+    {
+      kind: 'text',
+      path: 'name',
+      label: ptTr(LOC_PROSODY_FIREWALL_NAME),
+      description: ptTr(LOC_PROSODY_FIREWALL_NAME_DESC),
       default: '',
-      maxlength: maxFirewallNameLength
+      maxlength: maxFirewallNameLength,
+      headerClassList: ['peertube-livechat-admin-firewall-col-name']
     },
-    content: {
-      inputType: 'textarea',
+    {
+      kind: 'textarea',
+      path: 'content',
+      label: ptTr(LOC_PROSODY_FIREWALL_CONTENT),
       default: '',
-      maxlength: maxFirewallFileSize
+      maxlength: maxFirewallFileSize,
+      headerClassList: ['peertube-livechat-admin-firewall-col-content']
     }
-  }
+  ]
 
   return html`
     <div class="margin-content peertube-plugin-livechat-admin-firewall">
@@ -62,13 +57,12 @@ export function tplAdminFirewall (el: AdminFirewallElement): TemplateResult {
 
       <form role="form" @submit=${el.saveConfig} @change=${el.resetValidation}>
         <livechat-dynamic-table-form
-          .header=${tableHeaderList}
           .schema=${tableSchema}
           .maxLines=${maxFirewallFiles}
-          .validation=${el.validationError?.properties}
+          .validations=${el.validationError?.properties}
           .validationPrefix=${'files'}
-          .rows=${el.firewallConfiguration?.files ?? []}
-          @update=${(e: CustomEvent) => {
+          .form=${el.firewallConfiguration?.files ?? []}
+          @update-form=${(e: CustomEvent) => {
               el.resetValidation(e)
               if (el.firewallConfiguration) {
                 el.firewallConfiguration.files = e.detail
