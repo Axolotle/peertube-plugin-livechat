@@ -53,8 +53,7 @@ export const instanceConfig: ChannelConfigurationOptions<'instance'> = {
   moderation: {
     delay: { value: 10, forced: true },
     anonymize: { value: false, forced: false }
-  },
-  terms: { value: undefined, forced: false }
+  }
 }
 
 export function mergeConfig (

@@ -180,44 +180,6 @@ export function tplInstanceChannelConfiguration (el: InstanceChannelConfiguratio
       </p>
 
       <form livechat-configuration-channel-options role="form" @submit=${el.saveConfig} @change=${el.resetValidation}>
-
-        <livechat-configuration-section-header
-          .label=${ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_TERMS_LABEL)}
-          .description=${ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_TERMS_DESC, true)}
-          .helpPage=${'documentation/user/streamers/terms'}>
-        </livechat-configuration-section-header>
-        <div class="form-group">
-          <textarea
-            .title=${ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_TERMS_LABEL) as any}
-            name="terms"
-            id="peertube-livechat-terms"
-            .value=${el.channelConfiguration?.configuration.terms.value ?? ''}
-            maxlength=${el.termsMaxLength()}
-            class=${classMap(
-                Object.assign(
-                  { 'form-control': true },
-                  el.getInputValidationClass('terms')
-                )
-              )}
-            @change=${(event: Event) => {
-                if (event?.target && el.channelConfiguration) {
-                  let value: string | undefined = (event.target as HTMLTextAreaElement).value
-                  if (value === '') { value = undefined }
-                  el.channelConfiguration.configuration.terms.value = value
-                }
-                el.requestUpdate('channelConfiguration')
-              }
-            }
-          ></textarea>
-          ${el.renderFeedback('peertube-livechat-terms-feedback', 'terms')}
-          <livechat-form-checkbox
-            id="peertube-livechat-terms-forced"
-            .label=${'Force'}
-            .description=${'If forced, terms will be prepend on all channels terms.'}
-            .value=${el.channelConfiguration?.configuration.terms.forced}
-          ></livechat-form-checkbox>
-        </div>
-
         <livechat-configuration-section-header
           .label=${ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_MUTE_ANONYMOUS_LABEL)}
           .description=${ptTr(LOC_LIVECHAT_CONFIGURATION_CHANNEL_MUTE_ANONYMOUS_DESC, true)}

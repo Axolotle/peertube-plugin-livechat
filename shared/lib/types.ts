@@ -107,7 +107,7 @@ export type InstanceActivatable<
       enabled: boolean
     }
 
-interface ChannelConfigurationOptions<Mode extends 'instance' | 'normal' = 'normal'> {
+interface BaseChannelConfigurationOptions<Mode extends 'instance' | 'normal' = 'normal'> {
   bot: {
     enabled: Forcible<boolean, Mode>
     nickname: Forcible<string | undefined, Mode>
@@ -132,12 +132,19 @@ interface ChannelConfigurationOptions<Mode extends 'instance' | 'normal' = 'norm
     // TODO: https://github.com/JohnXLivingston/peertube-plugin-livechat/issues/127
     // nonFollowers: boolean (or a number of seconds?)
   }
-  terms: Forcible<string | undefined, Mode> // comes with Livechat 10.2.0
   moderation: { // comes with Livechat 10.3.0
     delay: Forcible<number, Mode>
     anonymize: Forcible<boolean, Mode> // comes with Livechat 11.0.0
   }
 }
+
+export type ChannelConfigurationOptions<Mode extends 'instance' | 'normal' = 'normal'> =
+  BaseChannelConfigurationOptions<Mode> &
+  (Mode extends 'normal'
+    ? {
+        terms?: string // comes with Livechat 10.2.0
+      }
+    : never)
 
 interface ChannelForbiddenWords {
   uuid: string
